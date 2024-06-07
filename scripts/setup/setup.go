@@ -279,14 +279,27 @@ func SetupSystem() error {
 
 	// NAT setup
 	utils.WaitPrintf("Setting up NAT")
-	bashCmd =
-		`hostiface=$(sudo route | grep default | tr -s ' ' | cut -d ' ' -f 8) && ` +
-			`sudo nft "add table ip filter" && ` +
-			`sudo nft "add chain ip filter FORWARD { type filter hook forward priority 0; policy accept; }" && ` +
-			`sudo nft "add rule ip filter FORWARD ct state related,established counter accept" && ` +
-			`sudo nft "add table ip nat" && ` +
-			`sudo nft "add chain ip nat POSTROUTING { type nat hook postrouting priority 0; policy accept; }" && ` +
-			`sudo nft "add rule ip nat POSTROUTING oifname ${hostiface} counter masquerade"`
+	bashCmd = 
+		`hostiface=$(sudo route | grep default | tr -s ' ' | cut -d ' ' -f 8)
+
+# Add filter table if it doesn't exist
+sudo nft list table ip filter > /dev/null 2>&1 || sudo nft add table ip filter
+
+# Add FORWARD chain to filter table if it doesn't exist
+sudo nft list chain ip filter FORWARD > /dev/null 2>&1 || sudo nft add chain ip filter FORWARD { type filter hook forward priority 0\; policy accept\; }
+
+# Add rule to FORWARD chain to accept related and established connections if it doesn't exist
+sudo nft list chain ip filter FORWARD | grep -q 'ct state related,established counter accept' || sudo nft add rule ip filter FORWARD ct state related,established counter accept
+
+# Add nat table if it doesn't exist
+sudo nft list table ip nat > /dev/null 2>&1 || sudo nft add table ip nat
+
+# Add POSTROUTING chain to nat table if it doesn't exist
+sudo nft list chain ip nat POSTROUTING > /dev/null 2>&1 || sudo nft add chain ip nat POSTROUTING { type nat hook postrouting priority 0\; policy accept\; }
+
+# Add rule to POSTROUTING chain for masquerading if it doesn't exist
+sudo nft list chain ip nat POSTROUTING | grep -q "oifname $hostiface counter masquerade" || sudo nft add rule ip nat POSTROUTING oifname ${hostiface} counter masquerade`
+	
 	_, err = utils.ExecShellCmd(bashCmd)
 	if !utils.CheckErrorWithTagAndMsg(err, "Failed to set up NAT!\n") {
 		return err
