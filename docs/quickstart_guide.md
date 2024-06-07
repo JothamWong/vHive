@@ -76,7 +76,7 @@ Another option is to install using official instructions: [https://golang.org/do
     ```
 3. Get the setup scripts:
     ```bash
-    pushd scripts && go build -o setup_tool && popd && mv scripts/setup_tool .
+    pushd scripts && GOARCH=amd64 GOOS=linux go build -o setup_tool && popd && mv scripts/setup_tool .
     ```
     
     **Note:** All setup logs will be generated and saved to your current working directory.
